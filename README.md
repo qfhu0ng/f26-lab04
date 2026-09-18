@@ -1,5 +1,7 @@
 # Lab 4 Starter: Deploy lab04-service
 
+Agent used: OpenAI Codex (GPT-6).
+
 `lab04-service` is a small HTTP service with two routes. `GET /api/health` returns
 `{"status":"ok"}` and `GET /api/rooms` returns a fixed list of rooms. It is already
 written, already tested, and already containerized.
