@@ -2,8 +2,7 @@
 
 Experiment date: September 18, 2026. Region: `us-east-1`.
 
-Milestone 1 and its cleanup are complete. Milestones 2 and 3 have not been
-performed yet.
+Milestones 1 and 2 are complete. Milestone 3 (final cleanup) is pending.
 
 ## Local warm-up
 
@@ -52,7 +51,26 @@ The create waiter exited successfully. The outputs were:
 +------------+-----------------------------------------------------------+
 ```
 
-Scenario 2 and the healthy redeployment: not performed yet.
+### Milestone 2: scenario-2 deployment
+
+Created with `--parameters file://infra/params-scenario2.json`; the creation
+waiter completed at 13:32:48 UTC on September 18, 2026.
+
+```text
+InstanceId: i-009b3802aecb25460
+ServiceUrl: http://ec2-54-227-108-30.compute-1.amazonaws.com:8080
+```
+
+### Milestone 2: healthy redeployment
+
+The broken stack was deleted and `stack-delete-complete` returned successfully
+before creating a new stack with `infra/params-healthy.json`. The creation waiter
+completed at 13:36:33 UTC on September 18, 2026.
+
+```text
+InstanceId: i-0355cabcfc59d0deb
+ServiceUrl: http://ec2-3-85-226-91.compute-1.amazonaws.com:8080
+```
 
 ## 2. External health check
 
@@ -78,26 +96,50 @@ after four hours as a guard, which does not replace deleting the stack.
 
 ## 4. Scenario 2 diagnosis
 
-**The failing curl** (command and output):
+The instance finished its first-boot script (`sudo cloud-init status --wait`
+reported `status: done`). The two external checks at 13:34:24 UTC and
+13:34:42 UTC both failed with exit code 28; this was not just an early request
+while Docker was being installed.
 
+**The failing curl** (command and output, same error on both attempts):
+
+```text
+$ curl --noproxy '*' --connect-timeout 5 --max-time 10 --fail --silent --show-error http://ec2-54-227-108-30.compute-1.amazonaws.com:8080/api/health
+curl: (28) Failed to connect to ec2-54-227-108-30.compute-1.amazonaws.com port 8080 after 5005 ms: Timeout was reached
 ```
 
+**The instance evidence:**
+
+Connected using `aws ssm start-session --target i-009b3802aecb25460 --region us-east-1`.
+
+```text
+$ sudo cloud-init status --wait
+status: done
+$ sudo docker ps
+CONTAINER ID   IMAGE                                     COMMAND                  CREATED          STATUS          PORTS                                       NAMES
+a330e91c7066   ghcr.io/cmu-17-214/lab04-service:latest   "/__cacert_entrypoin…"   23 seconds ago   Up 22 seconds   0.0.0.0:8080->8080/tcp, :::8080->8080/tcp   lab04-service
+$ sudo docker logs lab04-service
+lab04-service listening on 9090
 ```
 
-**The log line that told you what was wrong:**
+**What was wrong, and the fix applied:**
 
-```
-
-```
-
-**What was wrong, and the fix you applied:**
-
-<!-- One or two sentences. Say what you changed and where you changed it. -->
+The scenario-2 parameter file sets `PortOverride=9090`, so the application listens
+on container port 9090, while `ServicePort=8080` keeps the security-group service
+rule and Docker mapping at host 8080 to container 8080; the running container's
+mapping and the log line above show the mismatch. I fixed the infrastructure by
+deleting the broken stack and recreating it with `infra/params-healthy.json`, where
+`PortOverride` is empty and the application therefore listens on `ServicePort`
+8080, rather than modifying the running container.
 
 **The healthy curl after the fix:**
 
-```
+The request at approximately 13:37:56 UTC succeeded (exit code 0), after two
+startup-time retries:
 
+```text
+$ curl --noproxy '*' --connect-timeout 5 --max-time 10 --fail --silent --show-error http://ec2-3-85-226-91.compute-1.amazonaws.com:8080/api/health
+{"status":"ok"}
 ```
 
 ## 5. Teardown proof
