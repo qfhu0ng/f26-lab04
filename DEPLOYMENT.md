@@ -2,7 +2,8 @@
 
 Experiment date: September 18, 2026. Region: `us-east-1`.
 
-Milestones 1 and 2 are complete. Milestone 3 (final cleanup) is pending.
+All three milestones are complete. All Lab 04 stacks have been deleted;
+End Lab has been confirmed in AWS Academy.
 
 ## Local warm-up
 
@@ -159,5 +160,17 @@ aws: [ERROR]: An error occurred (ValidationError) when calling the DescribeStack
 
 ### Final cleanup after Milestone 2
 
-Not performed yet. The evidence above only covers the first healthy deployment.
-End Lab has not been clicked as part of this run.
+The final healthy stack was deleted, and `stack-delete-complete` returned
+successfully. At 13:39:01 UTC on September 18, 2026, the following check confirmed
+that the stack no longer existed (exit code 254):
+
+```text
+$ aws cloudformation delete-stack --stack-name lab04-service --region us-east-1 --no-cli-pager
+$ aws cloudformation wait stack-delete-complete --stack-name lab04-service --region us-east-1
+$ aws cloudformation describe-stacks --stack-name lab04-service --region us-east-1 --no-cli-pager
+aws: [ERROR]: An error occurred (ValidationError) when calling the DescribeStacks operation: Stack with id lab04-service does not exist
+```
+
+After deleting the stack, I selected **End Lab** in AWS Academy and confirmed
+**Yes**. The page subsequently reported **AWS Status: Terminated**,
+**Lab terminated**, and a session timer of **00:00**.
